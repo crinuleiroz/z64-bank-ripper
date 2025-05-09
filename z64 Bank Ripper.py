@@ -69,7 +69,7 @@ class SysMsg:
   def complete():
     print(f'''\
 {GREY}[▪]----------------------------------[▪]
- |     {RESET}{GREEN}Process is now completed      {GREY}|
+ |     {RESET}{GREEN}Process is now completed       {GREY}|
 [▪]----------------------------------[▪]{RESET}
 ''')
     os.system('pause')
