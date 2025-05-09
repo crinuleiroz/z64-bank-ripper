@@ -5,7 +5,7 @@ from typing import BinaryIO
 from time import strftime
 
 # Last updated
-LAST_UPDATED = '2025.05.06'
+LAST_UPDATED = '2025.05.08'
 
 # Create ANSI formatting for terminal messages
 # ANSI COLORS: https://talyian.github.io/ansicolors/
@@ -61,7 +61,7 @@ class SysMsg:
   def header():
     print(f'''\
 {GREY}[▪]----------------------------------[▪]
- |   {RESET}{PINK}AUDIOBIN GENERATOR {GREY}v{LAST_UPDATED}   |
+ |    {RESET}{PINK}AUDIOBANK RIPPER {GREY}v{LAST_UPDATED}    |
 [▪]----------------------------------[▪]{RESET}
 ''')
 
