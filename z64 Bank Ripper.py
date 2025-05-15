@@ -145,6 +145,9 @@ def extract_and_write_files(rom: BinaryIO, offset: int, size: int, game: str, ou
     address = int.from_bytes(dma[0:4], "big")
     length = int.from_bytes(dma[4:8], "big")
 
+    # Only extract banks whose length has changed
+    # Comment this block out and uncomment the block below if you
+    # want to extract all banks regardless of changes
     if bank_lens[bank_index] != length:
       if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -160,6 +163,24 @@ def extract_and_write_files(rom: BinaryIO, offset: int, size: int, game: str, ou
 
       with open(f"{filename}.bankmeta", 'wb') as bankmeta:
         bankmeta.write(metadata)
+
+    # Extract all banks
+    # Uncomment this block and comment the block above if you
+    # want to extract all banks regardless of changes
+    # if not os.path.exists(output_dir):
+    #   os.makedirs(output_dir)
+    # output_dir += "/"
+
+    # metadata = dma[8:16]
+    # bank_index_hex = hex(bank_index).lstrip("0x").zfill(2)
+    # filename = output_dir + bank_index_hex
+
+    # with open(f"{filename}.zbank", 'wb') as zbank:
+    #   rom.seek(offset + address)
+    #   zbank.write(rom.read(length))
+
+    # with open(f"{filename}.bankmeta", 'wb') as bankmeta:
+    #   bankmeta.write(metadata)
 
     bank_index += 1
 
