@@ -16,8 +16,11 @@ If you need to decompress a ROM, you can use [z64decompress](https://github.com/
 ## What is Extracted
 The script only extracts banks whose length does not match the length of the origin game's bank at the given index. If you want to rip every single bank, make the following changes:
 
-At line 148, change the code from this:
+Comment out the block of code from line 151 to line 165:
 ```py
+# Only extract banks whose length has changed
+# Comment this block out and uncomment the block below if you
+# want to extract all banks regardless of changes
 if bank_lens[bank_index] != length:
   if not os.path.exists(output_dir):
     os.makedirs(output_dir)
@@ -35,9 +38,11 @@ if bank_lens[bank_index] != length:
     bankmeta.write(metadata)
 ```
 
-To this (removing the conditional that checks the length):
+And uncomment out the block of code from line 168 to line 183:
 ```py
-#if bank_lens[bank_index] != length:
+# Extract all banks
+# Uncomment this block and comment the block above if you
+# want to extract all banks regardless of changes
 if not os.path.exists(output_dir):
   os.makedirs(output_dir)
 output_dir += "/"
