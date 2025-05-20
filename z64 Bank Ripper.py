@@ -24,11 +24,11 @@ ROM_LENGTH = 67108864
 
 AUDIOBIN_OFFSETS: dict[str, dict[str, tuple[int, int]]] = {
   "oot": {
-    #"Audiobank":        (0x0000D390, 0x0001CA50),
+    "Audiobank":        (0x0000D390, 0x0001CA50),
     "Audiobank_index":  (0x00B896A0, 0x00000270),
   },
   "mm": {
-    #"Audiobank":        (0x00020700, 0x000263F0),
+    "Audiobank":        (0x00020700, 0x000263F0),
     "Audiobank_index":  (0x00C776C0, 0x000002A0),
   }
 }
@@ -69,7 +69,7 @@ class SysMsg:
   def complete():
     print(f'''\
 {GREY}[▪]----------------------------------[▪]
- |     {RESET}{GREEN}Process is now completed       {GREY}|
+ |     {RESET}{GREEN}Process is now completed      {GREY}|
 [▪]----------------------------------[▪]{RESET}
 ''')
     os.system('pause')
@@ -129,7 +129,7 @@ class SysMsg:
 {GREY}[{PINK}>{GREY}]:{RESET} {YELLOW}Warning:{RESET} The number of banks is {YELLOW}0x{number}{RESET} instead of {"0x26" if game == "oot" else "0x29"}.
 ''')
 
-def extract_and_write_files(rom: BinaryIO, offset: int, size: int, game: str, output_dir, bank_lens):
+def extract_and_write_files(rom: BinaryIO, audiobank_loc: int, offset: int, size: int, game: str, output_dir, bank_lens):
   rom.seek(offset)
   audiobank_table = rom.read(size)
 
@@ -145,9 +145,6 @@ def extract_and_write_files(rom: BinaryIO, offset: int, size: int, game: str, ou
     address = int.from_bytes(dma[0:4], "big")
     length = int.from_bytes(dma[4:8], "big")
 
-    # Only extract banks whose length has changed
-    # Comment this block out and uncomment the block below if you
-    # want to extract all banks regardless of changes
     if bank_lens[bank_index] != length:
       if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -158,29 +155,11 @@ def extract_and_write_files(rom: BinaryIO, offset: int, size: int, game: str, ou
       filename = output_dir + bank_index_hex
 
       with open(f"{filename}.zbank", 'wb') as zbank:
-        rom.seek(offset + address)
+        rom.seek(audiobank_loc + address)
         zbank.write(rom.read(length))
 
       with open(f"{filename}.bankmeta", 'wb') as bankmeta:
         bankmeta.write(metadata)
-
-    # Extract all banks
-    # Uncomment this block and comment the block above if you
-    # want to extract all banks regardless of changes
-    # if not os.path.exists(output_dir):
-    #   os.makedirs(output_dir)
-    # output_dir += "/"
-
-    # metadata = dma[8:16]
-    # bank_index_hex = hex(bank_index).lstrip("0x").zfill(2)
-    # filename = output_dir + bank_index_hex
-
-    # with open(f"{filename}.zbank", 'wb') as zbank:
-    #   rom.seek(offset + address)
-    #   zbank.write(rom.read(length))
-
-    # with open(f"{filename}.bankmeta", 'wb') as bankmeta:
-    #   bankmeta.write(metadata)
 
     bank_index += 1
 
@@ -191,15 +170,17 @@ def main(game) -> None:
     with open(ROM_FILE, 'rb') as rom:
       offset = AUDIOBIN_OFFSETS["oot"]["Audiobank_index"][0]
       size = AUDIOBIN_OFFSETS["oot"]["Audiobank_index"][1]
+      audiobank_loc = AUDIOBIN_OFFSETS["oot"]["Audiobank"][1]
       SysMsg.extracting_data()
-      extract_and_write_files(rom, offset, size, game, output_dir, OOT_BANK_SIZES)
+      extract_and_write_files(rom, audiobank_loc, offset, size, game, output_dir, OOT_BANK_SIZES)
 
   if game == "mm":
     with open(ROM_FILE, 'rb') as rom:
       offset = AUDIOBIN_OFFSETS["mm"]["Audiobank_index"][0]
       size = AUDIOBIN_OFFSETS["mm"]["Audiobank_index"][1]
+      audiobank_loc = AUDIOBIN_OFFSETS["mm"]["Audiobank"][1]
       SysMsg.extracting_data()
-      extract_and_write_files(rom, offset, size, game, output_dir, MM_BANK_SIZES)
+      extract_and_write_files(rom, audiobank_loc, offset, size, game, output_dir, MM_BANK_SIZES)
 
 if __name__ == "__main__":
   SysMsg.header()
