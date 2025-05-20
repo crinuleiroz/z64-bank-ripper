@@ -5,7 +5,7 @@ from typing import BinaryIO
 from time import strftime
 
 # Last updated
-LAST_UPDATED = '2025.05.08'
+LAST_UPDATED = '2025.05.20'
 
 # Create ANSI formatting for terminal messages
 # ANSI COLORS: https://talyian.github.io/ansicolors/
@@ -170,7 +170,7 @@ def main(game) -> None:
     with open(ROM_FILE, 'rb') as rom:
       offset = AUDIOBIN_OFFSETS["oot"]["Audiobank_index"][0]
       size = AUDIOBIN_OFFSETS["oot"]["Audiobank_index"][1]
-      audiobank_loc = AUDIOBIN_OFFSETS["oot"]["Audiobank"][1]
+      audiobank_loc = AUDIOBIN_OFFSETS["oot"]["Audiobank"][0]
       SysMsg.extracting_data()
       extract_and_write_files(rom, audiobank_loc, offset, size, game, output_dir, OOT_BANK_SIZES)
 
@@ -178,7 +178,7 @@ def main(game) -> None:
     with open(ROM_FILE, 'rb') as rom:
       offset = AUDIOBIN_OFFSETS["mm"]["Audiobank_index"][0]
       size = AUDIOBIN_OFFSETS["mm"]["Audiobank_index"][1]
-      audiobank_loc = AUDIOBIN_OFFSETS["mm"]["Audiobank"][1]
+      audiobank_loc = AUDIOBIN_OFFSETS["mm"]["Audiobank"][0]
       SysMsg.extracting_data()
       extract_and_write_files(rom, audiobank_loc, offset, size, game, output_dir, MM_BANK_SIZES)
 
