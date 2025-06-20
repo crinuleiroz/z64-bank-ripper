@@ -1,3 +1,6 @@
+# Set to "True" to extract only vanilla banks, "False" to only extract changed banks
+EXTRACT_VANILLA = True
+
 import os
 import sys
 import binascii
@@ -129,6 +132,22 @@ class SysMsg:
 {GREY}[{PINK}>{GREY}]:{RESET} {YELLOW}Warning:{RESET} The number of banks is {YELLOW}0x{number}{RESET} instead of {"0x26" if game == "oot" else "0x29"}.
 ''')
 
+def extract_banks(rom: BinaryIO, audiobank_loc: int, address: int, length: int, output_dir: str, bank_index: int, dma):
+  if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+  output_dir += "/"
+
+  metadata = dma[8:16]
+  bank_index_hex = hex(bank_index).lstrip("0x").zfill(2)
+  filename = output_dir + bank_index_hex
+
+  with open(f"{filename}.zbank", 'wb') as zbank:
+    rom.seek(audiobank_loc + address)
+    zbank.write(rom.read(length))
+
+  with open(f"{filename}.bankmeta", 'wb') as bankmeta:
+    bankmeta.write(metadata)
+
 def extract_and_write_files(rom: BinaryIO, audiobank_loc: int, offset: int, size: int, game: str, output_dir, bank_lens):
   rom.seek(offset)
   audiobank_table = rom.read(size)
@@ -139,29 +158,17 @@ def extract_and_write_files(rom: BinaryIO, audiobank_loc: int, offset: int, size
   elif game == "mm" and hexified_table_data[0:4] != b'0029':
       SysMsg.bank_number_error(game, int(hexified_table_data[0:4]))
 
-  bank_index = 0
   audiobank_table_dmaspaced = [audiobank_table[i:i+0x10] for i in range(0x10, len(audiobank_table), 0x10)]
-  for dma in audiobank_table_dmaspaced:
+  for bank_index, dma in enumerate(audiobank_table_dmaspaced):
     address = int.from_bytes(dma[0:4], "big")
     length = int.from_bytes(dma[4:8], "big")
 
-    if bank_lens[bank_index] != length:
-      if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-      output_dir += "/"
-
-      metadata = dma[8:16]
-      bank_index_hex = hex(bank_index).lstrip("0x").zfill(2)
-      filename = output_dir + bank_index_hex
-
-      with open(f"{filename}.zbank", 'wb') as zbank:
-        rom.seek(audiobank_loc + address)
-        zbank.write(rom.read(length))
-
-      with open(f"{filename}.bankmeta", 'wb') as bankmeta:
-        bankmeta.write(metadata)
-
-    bank_index += 1
+    if EXTRACT_VANILLA:
+      if bank_lens[bank_index] == length:
+        extract_banks(rom, audiobank_loc, address, length, output_dir, bank_index, dma)
+    else:
+      if bank_lens[bank_index] != length:
+        extract_banks(rom, audiobank_loc, address, length, output_dir, bank_index, dma)
 
 def main(game) -> None:
   output_dir = f"{game}_" + strftime("%Y-%m-%d_%H%M")
