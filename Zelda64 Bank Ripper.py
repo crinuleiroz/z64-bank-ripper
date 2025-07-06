@@ -12,28 +12,33 @@ LAST_UPDATED = '2025.05.20'
 
 # Create ANSI formatting for terminal messages
 # ANSI COLORS: https://talyian.github.io/ansicolors/
-RESET  = "\x1b[0m"
-BLUE   = "\x1b[38;5;14m"
-PINK   = "\x1b[38;5;218m"
-GREEN  = "\x1b[38;5;115m"
-GREY   = "\x1b[38;5;8m"
-YELLOW = "\x1b[33m"
+RESET  = '\x1b[0m'
+BLUE   = '\x1b[38;5;14m'
+PINK   = '\x1b[38;5;218m'
+GREEN  = '\x1b[38;5;115m'
+GREY   = '\x1b[38;5;8m'
+YELLOW = '\x1b[33m'
 
-OOT_BLUE = "\x1b[38;5;39m"
-MM_PURPLE = "\x1b[38;5;141m"
+OOT_BLUE = '\x1b[38;5;39m'
+MM_PURPLE = '\x1b[38;5;141m'
 
 ROM_FILE = sys.argv[1]
 ROM_LENGTH = 67108864
 
 AUDIOBIN_OFFSETS: dict[str, dict[str, tuple[int, int]]] = {
-  "oot": {
-    "Audiobank":        (0x0000D390, 0x0001CA50),
-    "Audiobank_index":  (0x00B896A0, 0x00000270),
+  'oot': {
+    'Audiobank':        (0x0000D390, 0x0001CA50),
+    'Audiobank_index':  (0x00B896A0, 0x00000270),
   },
-  "mm": {
-    "Audiobank":        (0x00020700, 0x000263F0),
-    "Audiobank_index":  (0x00C776C0, 0x000002A0),
+  'mm': {
+    'Audiobank':        (0x00020700, 0x000263F0),
+    'Audiobank_index':  (0x00C776C0, 0x000002A0),
   }
+}
+
+NUM_BANKS: dict[str, str] = {
+  'oot': b'0026',
+  'mm': b'0029'
 }
 
 OOT_BANK_SIZES = [
@@ -129,67 +134,63 @@ class SysMsg:
   @staticmethod
   def bank_number_error(game, number):
     print(f'''\
-{GREY}[{PINK}>{GREY}]:{RESET} {YELLOW}Warning:{RESET} The number of banks is {YELLOW}0x{number}{RESET} instead of {"0x26" if game == "oot" else "0x29"}.
+{GREY}[{PINK}>{GREY}]:{RESET} {YELLOW}Warning:{RESET} The number of banks is {YELLOW}0x{number}{RESET} instead of {'0x26' if game == 'oot' else '0x29'}.
 ''')
 
-def extract_banks(rom: BinaryIO, audiobank_loc: int, address: int, length: int, output_dir: str, bank_index: int, dma):
+def extract_banks(rom: BinaryIO, audiobank_loc: int, address: int, size: int, output_dir: str, bank_index: int, entry):
   if not os.path.exists(output_dir):
     os.makedirs(output_dir)
-  output_dir += "/"
+  output_dir += '/'
 
-  metadata = dma[8:16]
-  bank_index_hex = hex(bank_index).lstrip("0x").zfill(2)
+  metadata = entry[8:16]
+  bank_index_hex = hex(bank_index).lstrip('0x').zfill(2)
   filename = output_dir + bank_index_hex
 
-  with open(f"{filename}.zbank", 'wb') as zbank:
+  with open(f'{filename}.zbank', 'wb') as zbank:
     rom.seek(audiobank_loc + address)
-    zbank.write(rom.read(length))
+    zbank.write(rom.read(size))
 
-  with open(f"{filename}.bankmeta", 'wb') as bankmeta:
+  with open(f'{filename}.bankmeta', 'wb') as bankmeta:
     bankmeta.write(metadata)
 
-def extract_and_write_files(rom: BinaryIO, audiobank_loc: int, offset: int, size: int, game: str, output_dir, bank_lens):
+def extract_and_write_files(rom: BinaryIO, audiobank_loc: int, offset: int, size: int, game: str, output_dir, bank_sizes):
   rom.seek(offset)
   audiobank_table = rom.read(size)
-
   hexified_table_data = binascii.hexlify(audiobank_table)
-  if game == "oot" and hexified_table_data[0:4] != b'0026':
-      SysMsg.bank_number_error(game, int(hexified_table_data[0:4]))
-  elif game == "mm" and hexified_table_data[0:4] != b'0029':
-      SysMsg.bank_number_error(game, int(hexified_table_data[0:4]))
 
-  audiobank_table_dmaspaced = [audiobank_table[i:i+0x10] for i in range(0x10, len(audiobank_table), 0x10)]
-  for bank_index, dma in enumerate(audiobank_table_dmaspaced):
-    address = int.from_bytes(dma[0:4], "big")
-    length = int.from_bytes(dma[4:8], "big")
+  num_banks = NUM_BANKS.get(game)
+  if num_banks and hexified_table_data[:4] != num_banks:
+    SysMsg.bank_number_error(game, int(hexified_table_data[0:4]))
 
-    if EXTRACT_VANILLA:
-      if bank_lens[bank_index] == length:
-        extract_banks(rom, audiobank_loc, address, length, output_dir, bank_index, dma)
-    else:
-      if bank_lens[bank_index] != length:
-        extract_banks(rom, audiobank_loc, address, length, output_dir, bank_index, dma)
+  # Parse DMA audiobank table entries while skipping the first 0x10 bytes (header)
+  table_entries = [audiobank_table[i:i+0x10] for i in range(0x10, len(audiobank_table), 0x10)]
+
+  for index, entry in enumerate(table_entries):
+    address = int.from_bytes(entry[0:4], 'big')
+    size = int.from_bytes(entry[4:8], 'big')
+
+    is_vanilla_size: bool = bank_sizes[index] == size
+
+    if (EXTRACT_VANILLA and is_vanilla_size) or (not EXTRACT_VANILLA and not is_vanilla_size):
+      extract_banks(rom, audiobank_loc, address, size, output_dir, index, entry)
 
 def main(game) -> None:
-  output_dir = f"{game}_" + strftime("%Y-%m-%d_%H%M")
+  output_dir = f'{game}_' + strftime('%Y-%m-%d_%H%M')
 
-  if game == "oot":
-    with open(ROM_FILE, 'rb') as rom:
-      offset = AUDIOBIN_OFFSETS["oot"]["Audiobank_index"][0]
-      size = AUDIOBIN_OFFSETS["oot"]["Audiobank_index"][1]
-      audiobank_loc = AUDIOBIN_OFFSETS["oot"]["Audiobank"][0]
-      SysMsg.extracting_data()
-      extract_and_write_files(rom, audiobank_loc, offset, size, game, output_dir, OOT_BANK_SIZES)
+  match game:
+    case 'oot':
+      bank_sizes = OOT_BANK_SIZES
+    case 'mm':
+      bank_sizes = MM_BANK_SIZES
 
-  if game == "mm":
-    with open(ROM_FILE, 'rb') as rom:
-      offset = AUDIOBIN_OFFSETS["mm"]["Audiobank_index"][0]
-      size = AUDIOBIN_OFFSETS["mm"]["Audiobank_index"][1]
-      audiobank_loc = AUDIOBIN_OFFSETS["mm"]["Audiobank"][0]
-      SysMsg.extracting_data()
-      extract_and_write_files(rom, audiobank_loc, offset, size, game, output_dir, MM_BANK_SIZES)
+  with open(ROM_FILE, 'rb') as rom:
+    offset = AUDIOBIN_OFFSETS[game]['Audiobank_index'][0]
+    size = AUDIOBIN_OFFSETS[game]['Audiobank_index'][1]
+    audiobank_loc = AUDIOBIN_OFFSETS[game]['Audiobank'][0]
+    SysMsg.extracting_data()
+    extract_and_write_files(rom, audiobank_loc, offset, size, game, output_dir, bank_sizes)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   SysMsg.header()
 
   if os.path.getsize(ROM_FILE) != ROM_LENGTH:
