@@ -1,5 +1,5 @@
 # Set to "True" to extract only vanilla banks, "False" to only extract changed banks
-EXTRACT_VANILLA = True
+EXTRACT_VANILLA = False
 
 import os
 import sys
@@ -25,6 +25,45 @@ MM_PURPLE = '\x1b[38;5;141m'
 ROM_FILE = sys.argv[1]
 ROM_LENGTH = 67108864
 
+GAME_SIGNATURES: dict[str, dict[str, str]] = {
+  'big_endian': {
+    'oot': {
+      'signature': b"THE LEGEND OF ZELDA \x00\x00\x00\x00\x00\x00\x00CZLE\x00",
+      'name': "Ocarina of Time",
+      'color': OOT_BLUE
+    },
+    'mm': {
+      'signature': b"ZELDA MAJORA'S MASK \x00\x00\x00\x00\x00\x00\x00NZSE\x00",
+      'name': "Majora's Mask",
+      'color': MM_PURPLE
+    }
+  },
+  'little_endian': {
+    'oot': {
+      'signature': b"EHTEGELO DNEZ F ADL\x00\x00\x00\x00C\x00\x00\x00\x00ELZ",
+      'name': "Ocarina of Time",
+      'color': OOT_BLUE
+    },
+    'mm': {
+      'signature': b"DLEZAM AAROJM S' KSA\x00\x00\x00\x00N\x00\x00\x00\x00ESZ",
+      'name': "Majora's Mask",
+      'color': MM_PURPLE
+    }
+  },
+  'byteswapped': {
+    'oot': {
+      'signature': b"HT EELEGDNO  FEZDL A\x00\x00\x00\x00\x00\x00C\x00L\x00E",
+      'name': "Ocarina of Time",
+      'color': OOT_BLUE
+    },
+    'mm': {
+      'signature': b"EZDL AAMOJARS'M SA K\x00\x00\x00\x00\x00\x00N\x00SZ\x00E",
+      'name': "Majora's Mask",
+      'color': MM_PURPLE
+    }
+  }
+}
+
 AUDIOBIN_OFFSETS: dict[str, dict[str, tuple[int, int]]] = {
   'oot': {
     'Audiobank':        (0x0000D390, 0x0001CA50),
@@ -41,7 +80,7 @@ NUM_BANKS: dict[str, str] = {
   'mm': b'0029'
 }
 
-OOT_BANK_SIZES = [
+OOT_BANK_SIZES: list[int] = [
   0x3AA0, 0x17B0, 0x0CE0, 0x15D0, 0x0100,
   0x0B60, 0x0520, 0x0840, 0x0B20, 0x0FC0,
   0x09D0, 0x0390, 0x0320, 0x06F0, 0x0390,
@@ -52,7 +91,7 @@ OOT_BANK_SIZES = [
   0x0DE0, 0x0660, 0x3940
 ]
 
-MM_BANK_SIZES = [
+MM_BANK_SIZES: list[int] = [
   0x81C0, 0x36D0, 0x0CE0, 0x15D0, 0x0B60,
   0x0BE0, 0x0FC0, 0x06F0, 0x0560, 0x0CC0,
   0x0AA0, 0x0A60, 0x0BF0, 0x04C0, 0x0C00,
@@ -198,39 +237,30 @@ if __name__ == '__main__':
 
   SysMsg.read_rom_header()
   with open(ROM_FILE, 'rb') as rom:
-    rom_header = rom.read(64)
+    rom_header: bytes = rom.read(64)
 
-    # OCARINA OF TIME BIG ENDIAN
-    if b"THE LEGEND OF ZELDA \x00\x00\x00\x00\x00\x00\x00CZLE\x00" in rom_header:
-      SysMsg.detected_game("Ocarina of Time", OOT_BLUE)
-      game = "oot"
+    game: str = None
+    match_data: tuple[str, ...] = None
 
-    # MAJORA'S MASK BIG ENDIAN
-    elif b"ZELDA MAJORA'S MASK \x00\x00\x00\x00\x00\x00\x00NZSE\x00" in rom_header:
-      SysMsg.detected_game("Majora's Mask", MM_PURPLE)
-      game = "mm"
+    for endianness, games in GAME_SIGNATURES.items():
+      for key, info in games.items():
+        if info['signature'] in rom_header:
+          match_data = (endianness, key, info)
+          break
+      if match_data:
+        break
 
-    # OCARINA OF TIME BYTESWAPPED
-    elif b"HT EELEGDNO  FEZDL A\x00\x00\x00\x00\x00\x00C\x00L\x00E" in rom_header:
-      SysMsg.detected_game("Ocarina of Time", OOT_BLUE)
-      SysMsg.byteswapped_rom()
+    if match_data:
+      endianness, game, info = match_data
+      SysMsg.detected_game(info['name'], info['color'])
 
-    # MAJORA'S MASK BYTESWAPPED
-    elif b"EZDL AAMOJARS'M SA K\x00\x00\x00\x00\x00\x00N\x00SZ\x00E" in rom_header:
-      SysMsg.detected_game("Majora's Mask", MM_PURPLE)
-      SysMsg.byteswapped_rom()
-
-    # OCARINA OF TIME LITTLE ENDIAN
-    elif b"EHTEGELO DNEZ F ADL\x00\x00\x00\x00C\x00\x00\x00\x00ELZ" in rom_header:
-      SysMsg.detected_game("Ocarina of Time", OOT_BLUE)
-      SysMsg.little_endian_rom()
-
-    # MAJORA'S MASK LITTLE ENDIAN
-    elif b"DLEZAM AAROJM S' KSA\x00\x00\x00\x00N\x00\x00\x00\x00ESZ" in rom_header:
-      SysMsg.detected_game("Majora's Mask", MM_PURPLE)
-      SysMsg.little_endian_rom()
-
-    # UNKNOWN GAME
+      match endianness:
+        case 'little_endian':
+          SysMsg.little_endian_rom()
+        case 'byteswapped':
+          SysMsg.byteswapped_rom()
+        case 'big_endian':
+          pass
     else:
       SysMsg.unknown_game()
 
