@@ -23,7 +23,7 @@ OOT_BLUE = '\x1b[38;5;39m'
 MM_PURPLE = '\x1b[38;5;141m'
 
 ROM_FILE = sys.argv[1]
-ROM_LENGTH = 67108864
+ROM_SIZE = 67108864
 
 GAME_SIGNATURES: dict[str, dict[str, str]] = {
   'big_endian': {
@@ -232,7 +232,7 @@ def main(game) -> None:
 if __name__ == '__main__':
   SysMsg.header()
 
-  if os.path.getsize(ROM_FILE) != ROM_LENGTH:
+  if os.path.getsize(ROM_FILE) != ROM_SIZE:
     SysMsg.compressed_rom()
 
   SysMsg.read_rom_header()
