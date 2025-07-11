@@ -14,47 +14,4 @@ The script will check the size of the ROM to ensure it is decompressed, then it 
 If you need to decompress a ROM, you can use [z64decompress](https://github.com/z64utils/z64decompress) by z64utils. Just drag and drop your ROM onto the executable (`.exe`) file.
 
 ## What is Extracted
-The script only extracts banks whose length does not match the length of the origin game's bank at the given index. If you want to rip every single bank, make the following changes:
-
-Comment out the block of code from line 151 to line 165:
-```py
-# Only extract banks whose length has changed
-# Comment this block out and uncomment the block below if you
-# want to extract all banks regardless of changes
-if bank_lens[bank_index] != length:
-  if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
-  output_dir += "/"
-
-  metadata = dma[8:16]
-  bank_index_hex = hex(bank_index).lstrip("0x").zfill(2)
-  filename = output_dir + bank_index_hex
-
-  with open(f"{filename}.zbank", 'wb') as zbank:
-    rom.seek(offset + address)
-    zbank.write(rom.read(length))
-
-  with open(f"{filename}.bankmeta", 'wb') as bankmeta:
-    bankmeta.write(metadata)
-```
-
-And uncomment out the block of code from line 168 to line 183:
-```py
-# Extract all banks
-# Uncomment this block and comment the block above if you
-# want to extract all banks regardless of changes
-if not os.path.exists(output_dir):
-  os.makedirs(output_dir)
-output_dir += "/"
-
-metadata = dma[8:16]
-bank_index_hex = hex(bank_index).lstrip("0x").zfill(2)
-filename = output_dir + bank_index_hex
-
-with open(f"{filename}.zbank", 'wb') as zbank:
-  rom.seek(offset + address)
-  zbank.write(rom.read(length))
-
-with open(f"{filename}.bankmeta", 'wb') as bankmeta:
-  bankmeta.write(metadata)
-```
+The script only extracts banks whose length does not match the length of the origin game's bank at the given index. If you want to rip vanilla banks, change `EXTRACT_VANILLA` at the top of the file from `False` to `True`
